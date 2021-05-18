@@ -1,0 +1,88 @@
+#+OPTIONS: ^:nil
+* General
+
+Most common convention for TSV-based GRanges files is BED, ie 0-based, left-closed, right-open intervals. So I propose to use BED for all files. Note that this is different from the 1-based Illumina manifest. All major tools, eg GenomicRanges, have BED readers of course.
+
+To increase visibility of these annotations, I propose hosting them on github. This also allows expanding them over time. Do you have a lab github where this could be hosted?
+
+I think we need to provide annotations in multiple tables to allow inspection in Excel.
+
+* Methods text
+
+Gene and genomic region annotation was performed with gtfanno (0.2.0) (https://github.com/stephenkraemer/gtfanno). For all probes, residence in the following genomic regions was considered (in order of precedence): i) Promoter (-1500bp, +500bp around TSS); 5'-UTR (); 3'-UTR (); exon; intron; putative enhancer (+-100kb around TSS); intergenic (if no other category was met). We chose a window of +-100kb around the TSS for annotating putative enhancer relationships based on the successful correlation analysis of open chromatin regions and gene expressions within this genomic distance range in a recent large-scale study of the mouse immune system and its differentiation cascades [https://pubmed.ncbi.nlm.nih.gov/30686579/]. Annotations were performed against Gencode (release M25 for GRCm38/mm10), considering only the principal isoform (based on the APPRIS isoform annotations provided with Gencode M25 [https://academic.oup.com/nar/article/46/D1/D213/4561658]) of protein coding genes. If a probe was annotated to several region classes, only annotations for the region class with the highest precedence were considered. Within the highest ranked region class for each probe, all possible annotations were kept. For example, a probe may reside in the promoter region of two genes. In this case, both gene annotations were kept, as potential filtering on criteria such as distance to the TSS should be performed as required for the requirements of individual analyses. A variety of statistics for ranking and filtering annotations such as probe-to-TSS distance are provided in the annotation tables, as detailed in the file headers.
+
+* Note on multiple annotations
+
+Here is a general crosstabulation to show that eg multiple annos are a real consideration with Promoters.
+
+| feat_class |       1 |       2 |      3 |      4 |      5 |      6 |      7 |      8 |     9 |    10 |    11 |    12 |    13 |    14 |    15 |   16 |   17 |   18 |   19 |   20 |   21 |  22 |  23 |  24 |  25 |
+| Promoter   | 56553.0 |  4704.0 |  184.0 |    3.0 |        |        |        |        |       |       |       |       |       |       |       |      |      |      |      |      |      |     |     |     |     |
+| 5'-UTR     |  1003.0 |     4.0 |        |        |        |        |        |        |       |       |       |       |       |       |       |      |      |      |      |      |      |     |     |     |     |
+| 3'-UTR     |  5284.0 |    89.0 |        |        |        |        |        |        |       |       |       |       |   1.0 |       |       |      |      |      |      |      |  2.0 |     |     |     |     |
+| exon       | 26634.0 |   186.0 |    3.0 |        |        |        |        |        |   1.0 |       |       |       |       |       |       |      |      |      |      |      |      | 1.0 |     |     |     |
+| intron     | 90028.0 |  1929.0 |   84.0 |    4.0 |   10.0 |    6.0 |    5.0 |    1.0 |   3.0 |   9.0 |   1.0 |       |   4.0 |   3.0 |   3.0 |  9.0 |      |  1.0 |      |  5.0 |  9.0 | 4.0 |     | 8.0 |     |
+| DCRD       | 21944.0 | 13133.0 | 8339.0 | 5246.0 | 3632.0 | 2371.0 | 1574.0 | 1200.0 | 909.0 | 635.0 | 537.0 | 359.0 | 307.0 | 161.0 | 110.0 | 51.0 | 93.0 | 54.0 | 22.0 | 12.0 | 15.0 | 7.0 | 3.0 | 1.0 | 7.0 |
+| intergenic | 34506.0 |         |        |        |        |        |        |        |       |       |       |       |       |       |       |      |      |      |      |      |      |     |     |     |     |
+
+
+* Annotation files
+** Gene annotation
+
+Annotations for the highest precedence genomic region classes are available with one row per probe (in which case multiple annotations are represented by CSV fields) and with multiple rows per probe in case of multiple annotations. Both dataframes have the following schema:
+
+| Chromosome             | Chromosome of the query                                                         |
+| Start                  | 0-based, left-closed                                                            |
+| End                    | 0-based, right open                                                             |
+| Name                   | The Illumina probe ID (IlmnID field in manifest)                                |
+| Score                  | empty ('.')                                                                     |
+| Strand                 | strand of the cytosine                                                          |
+| Motif                  | one of CG, CHH, CHG                                                             |
+| Illumina_name          | Illumina probe name ("Name" field in manifest)                                  |
+| Center                 | center of the query regions*                                                    |
+| Feat_class             | Highest precedence annotation class found for this feature                      |
+| Perc_feature           | Percent of feature region overlapped by query*                                  |
+| Perc_region            | Percent of query region overlapped by features*                                 |
+| Distance               | distance from query center to TSS (negative: upstream)                          |
+| Gene_name              | gene symbol from gencode M25                                                    |
+| Gene_id                | Ensemble gene id from gencode M25                                               |
+| Transcript_id          | Ensemble transcript id from gencode M25                                         |
+| Appris_principal_score | APPRIS prinicipal score (always > 0, since we only consider principal isoforms) |
+| Feat_chrom             | Chromosome of the feature                                                       |
+| Feat_start             | 0-based, left-closed                                                            |
+| Feat_end               | 0-based, right-open                                                             |
+| Feat_center            | center of feature region                                                        |
+| Feat_strand            | transcript strand                                                               |
+
+** All annotations
+
+All annotations (without precedence filtering) are available in multi-row format (one row per probe, per annotation) with the following schema:
+
+| Chromosome             | Chromosome of the query                                                          |
+| Start                  | 0-based, left-closed                                                             |
+| End                    | 0-based, right open                                                              |
+| Name                   | The Illumina probe ID (IlmnID field in manifest)                                 |
+| Score                  | empty ('.')                                                                      |
+| Strand                 | strand of the cytosine                                                           |
+| Motif                  | one of CG, CHH, CHG                                                              |
+| Illumina_name          | Illumina probe name ("Name" field in manifest)                                   |
+| Center                 | center of the query regions*                                                     |
+| Feat_class             | Highest precedence annotation class found for this feature                       |
+| Perc_feature           | Percent of feature region overlapped by query*                                   |
+| Perc_region            | Percent of query region overlapped by features*                                  |
+| Distance               | distance from query center to TSS (negative: upstream)                           |
+| Gene_name              | gene symbol from gencode M25                                                     |
+| Gene_id                | Ensemble gene id from gencode M25                                                |
+| Transcript_id          | Ensemble transcript id from gencode M25                                          |
+| Appris_principal_score | APPRIS prinicipal score (always > 0, since we only consider principal isoforms)  |
+| Feat_chrom             | Chromosome of the feature                                                        |
+| Feat_start             | 0-based, left-closed                                                             |
+| Feat_end               | 0-based, right-open                                                              |
+| Feat_center            | center of feature region                                                         |
+| Feat_strand            | transcript strand                                                                |
+| Feat_rank              | primary if highest precedence genomic region class for the probe, else secondary |
+
+** Illumina manifest annotations as BED
+
+The Illumina manifest file as BED6+X format, with cytosine strand and motif (CG, CHH, CHG) information
+ 
+** Hematopoietic cis-regulatory regions
