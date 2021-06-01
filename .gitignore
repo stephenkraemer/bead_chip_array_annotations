@@ -6,8 +6,10 @@
 **/.pytest_cache/
 **/__pycache__
 **/__pycache__/
+*.bak
 .idea/
 .vscode/
 build
 dist/
 doc/_build
+local/

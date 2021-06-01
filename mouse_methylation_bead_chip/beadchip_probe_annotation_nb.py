@@ -13,7 +13,9 @@
 # ---
 
 # + [markdown] tags=[] heading_collapsed="true"
-# # TODO
+
+# * TODO
+
 # -
 
 # - check sorting order of chromosomes throughout analysis
@@ -36,16 +38,20 @@
 # - tfbs
 
 # + [markdown] tags=[]
-# # Setup
+
+# * Setup
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ## Resource parameters
+
+# ** Resource parameters
+
 # -
 
 n_cores = 12
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ## Imports
+
+# ** Imports
 
 # + tags=[]
 # isort: off
@@ -78,16 +84,21 @@ import mouse_hema_meth.utils as ut
 
 # %matplotlib inline
 
-import mouse_hema_meth.methylome.annotation.epic_array_probe_annotation_lib as lib
+import mouse_methylation_bead_chip.beadchip_probe_annotation_lib as lib
+import mouse_methylation_bead_chip.beadchip_probe_annotation_paths as paths
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ## Rerun flags
+
+# ** Rerun flags
+
 # -
 
 recompute = True
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ## Dtypes
+
+# ** Dtypes
+
 # -
 
 chrom_dtype_prefixed = pd.api.types.CategoricalDtype(
@@ -119,106 +130,24 @@ chrom_dtype_prefixed = pd.api.types.CategoricalDtype(
 )
 
 # + [markdown] tags=[]
-# # Paths
 
-# + [markdown] tags=[] heading_collapsed="true"
-# ## Project paths
-# -
+# * Paths
 
-project_dir = (
-    "/icgc/dkfzlsdf/analysis/B080/kraemers/projects/epic-arrays-for-hematopoiesis"
-)
-
-temp_dir_obj = tempfile.TemporaryDirectory(dir=project_dir)
+temp_dir_obj = tempfile.TemporaryDirectory(dir=paths.project_dir)
 temp_dir_name = temp_dir_obj.name
 temp_dir_name
 
-# + [markdown] tags=[] heading_collapsed="true"
-# ## Gencode
-# -
-
-gencode_download_url = "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M25/gencode.vM25.annotation.gtf.gz"
-
-# unmodified gencode gtf (note: with chr prefix)
-
-gencode_gtf = project_dir + "/gencode.vM25.annotation.gtf.gz"
-gencode_gtf
-
-# gencode filtered for principal transcripts of protein coding genes, note that that chromosome prefix ('chr') is removed in this file
-
-gencode_coding_canonical_gtf = (
-    project_dir + "/gencode.vM25.annotation_coding_canonical.gtf.gz"
-)
-gencode_coding_canonical_gtf
-
-# + [markdown] tags=[] heading_collapsed="true"
-# ## Probes
-# -
-
-# path to original probe file
-
-original_probes_bed = project_dir + "/2021-03-22_mmbc_probes.bed"
-
-# !head {original_probes_bed}
-
-# path to reformatted probe file
-
-reformatted_probes_bed = project_dir + "/2021-03-22_mmbc_probes_reformatted.bed"
-
-# full Illumina probe file
-
-illumina_probes_url = "https://support.illumina.com/content/dam/illumina-support/documents/downloads/productfiles/mouse-methylation/Infinium%20Mouse%20Methylation%20v1.0%20A1%20GS%20Manifest%20File.csv"
-illumina_probes_csv = (
-    project_dir
-    + "/Infinium_20Mouse_20Methylation_20v1.0_20A1_20GS_20Manifest_20File.csv"
-)
-illumina_probes_csv
-
-# full Illumina probe file BED coordinates
-
-illumina_coordinate_bed = project_dir + "/illumina-all-probes.bed"
-illumina_coordinate_bed
-
 # + [markdown] tags=[]
-# ## Gene annotation results
 
-# + [markdown] heading_collapsed="true" tags=[]
-# ### gtfanno results
-# -
-
-custom_intervals_results_dir = project_dir + "/custom-intervals_1500-500"
-os.makedirs(custom_intervals_results_dir, exist_ok=True)
-
-custom_intervals_trunk_path = (
-    custom_intervals_results_dir + "/custom-intervals_1500-500"
-)
-custom_intervals_trunk_path
-
-custom_intervals_results_paths_d = dict(
-    primary_annos_bed=custom_intervals_trunk_path + "_primary-annotations.bed",
-    primary_annos_p=custom_intervals_trunk_path + "_primary-annotations.p",
-    all_annos_bed=custom_intervals_trunk_path + "_all-annotations.bed",
-    all_annos_p=custom_intervals_trunk_path + "_all-annotations.p",
-)
-custom_intervals_results_paths_d
+# * Analysis
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ### Final tables
-# -
 
-gene_annos_primary_one_row = project_dir + "/gene-annos_primary_one-row.bed"
-print(gene_annos_primary_one_row)
-gene_annos_primary_multi_row = project_dir + "/gene-annos_primary_multi-row.bed"
-print(gene_annos_primary_multi_row)
-
-# + [markdown] tags=[]
-# # Analysis
+# ** Prepare input data
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ## Prepare input data
 
-# + [markdown] tags=[] heading_collapsed="true"
-# ### CpG island annos
+# *** CpG island annos
 
 # +
 import mouse_hema_meth.genome_annotations.get_genome_annos_paths as get_genome_annos_paths
@@ -226,23 +155,27 @@ import mouse_hema_meth.genome_annotations.get_genome_annos_paths as get_genome_a
 cpg_islands_pickle_d = get_genome_annos_paths.cpg_islands_shores_shelves_pickle_paths_d
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ### Prepare gene annotation
+
+# *** Prepare gene annotation
 
 # + [markdown] tags=[] heading_collapsed="true"
-# #### download gencode
+
+# **** download gencode
 
 # + tags=[]
 if recompute:
     subprocess.run(
-        ["wget", "-O", gencode_gtf, gencode_download_url],
+        ["wget", "-O", paths.gencode_gtf, paths.gencode_download_url],
         check=True,
     )
 
 # + tags=[]
-# !zcat {gencode_gtf} | head -n 6
+# !zcat {paths.gencode_gtf} | head -n 6
 
 # + [markdown] tags=[] heading_collapsed="true"
-# #### Filter and reformat gencode GTF
+
+# **** Filter and reformat gencode GTF
+
 # -
 
 # - restrict to canonical transcripts
@@ -250,7 +183,7 @@ if recompute:
 # - remove chr prefix
 # - change M to MT
 
-gencode_df = pr.read_gtf(gencode_gtf, as_df=True, duplicate_attr=True)
+gencode_df = pr.read_gtf(paths.gencode_gtf, as_df=True, duplicate_attr=True)
 
 # extract appris principal score from tags
 appris_principal_score = (
@@ -285,41 +218,47 @@ gencode_df_coding_canonical["Chromosome"] = gencode_df_coding_canonical[
 gencode_pr = pr.PyRanges(gencode_df_coding_canonical)
 gencode_pr.df.Chromosome.unique()
 
-gencode_pr.to_gtf(gencode_coding_canonical_gtf)
+gencode_pr.to_gtf(paths.gencode_coding_canonical_gtf)
 
-# !zcat {gencode_coding_canonical_gtf} | head
+# !zcat {paths.gencode_coding_canonical_gtf} | head
 
 # verify gtf
 
 # + tags=[] jupyter={"outputs_hidden": true}
-# !zcat {gencode_coding_canonical_gtf} | grep ^protein_coding
+# !zcat {paths.gencode_coding_canonical_gtf} | grep ^protein_coding
 
 # + tags=[] jupyter={"outputs_hidden": true}
-# !zcat {gencode_coding_canonical_gtf} | grep ^appris
+# !zcat {paths.gencode_coding_canonical_gtf} | grep ^appris
 
 # + [markdown] tags=[]
-# ### Prepare and inspect probes files
+
+# *** Prepare and inspect probes files
 
 # + [markdown] tags=[] heading_collapsed="true"
-# #### Probe file from Maxi
+
+# **** Probe file from Maxi
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ##### Inspect original probes file
+
+# ***** Inspect original probes file
+
 # -
 
 # - file has duplicates
 # - file is not fully sorted
 
 # + [markdown] tags=[]
-# ###### General overview
+
+# ****** General overview
+
 # -
 
-# !head -n 3 {original_probes_bed}
+# !head -n 3 {paths.original_probes_bed}
 
-# !cut -f 1 < {original_probes_bed} | uniq
+# !cut -f 1 < {paths.original_probes_bed} | uniq
 
 original_probes_df = pd.read_csv(
-    original_probes_bed,
+    paths.original_probes_bed,
     sep="\t",
     header=None,
     names=["Chromosome", "Start", "End", "name"],
@@ -332,7 +271,9 @@ original_probes_df["Chromosome"] = pd.Categorical(
 original_probes_df
 
 # + [markdown] tags=[]
-# ###### File is not fully sorted
+
+# ****** File is not fully sorted
+
 # -
 
 # **Note that the original probes df is not completely sorted on Start/End**
@@ -345,7 +286,9 @@ original_probes_df_sorted
 original_probes_df_sorted.Chromosome.dtype
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ###### Several probes are present with the same coordinates, but different names
+
+# ****** Several probes are present with the same coordinates, but different names
+
 # -
 
 original_probes_df.loc[
@@ -357,7 +300,9 @@ original_probes_df.loc[
 ]
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ##### Reformat probes file
+
+# ***** Reformat probes file
+
 # -
 
 # - need to resort
@@ -374,36 +319,43 @@ probes_df_no_prefix_sorted = (
 )
 
 probes_df_no_prefix_sorted.to_csv(
-    reformatted_probes_bed, sep="\t", header=False, index=False
+    paths.reformatted_probes_bed, sep="\t", header=False, index=False
 )
 
-# !head {reformatted_probes_bed}
+# !head {paths.reformatted_probes_bed}
 
 # + [markdown] tags=[] heading_collapsed="true"
-# #### Illumina probe file
+
+# **** Illumina probe file
 
 # + [markdown] tags=[]
-# ##### Schema
+
+# ***** Schema
+
 # -
 
 # - MFG_CHANGE probes haben ein problem
 # - there may be one row separating assay probes from controls somewhere in the dataframe? (info from Maxi)
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ##### Download
+
+# ***** Download
+
 # -
 
 if recompute:
-    subprocess.run(["wget", "-O", illumina_probes_csv, illumina_probes_url], check=True)
+    subprocess.run(["wget", "-O", paths.illumina_probes_csv, paths.illumina_probes_url], check=True)
 
-# !head {illumina_probes_csv}
+# !head {paths.illumina_probes_csv}
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ##### Get curated BED intervals for probes
+
+# ***** Get curated BED intervals for probes
+
 # -
 
 illumina_probes = pd.read_csv(
-    illumina_probes_csv,
+    paths.illumina_probes_csv,
     skiprows=7,
     dtype={
         "AddressA_ID": str,
@@ -447,13 +399,15 @@ illumina_probes_curated_chrom_defined
 illumina_probes_curated_chrom_defined.assign(
     Chromosome=lambda df: df.Chromosome.astype(str).str.replace("chr", "")
 ).iloc[:, 0:3].sort_values(["Chromosome", "Start", "End"]).drop_duplicates().to_csv(
-    illumina_coordinate_bed, sep="\t", header=False, index=False
+    paths.illumina_coordinate_bed, sep="\t", header=False, index=False
 )
 
-# !head {illumina_coordinate_bed}
+# !head {paths.illumina_coordinate_bed}
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ##### Check against Maxis probes to see whether I have correct manifest file
+
+# ***** Check against Maxis probes to see whether I have correct manifest file
+
 # -
 
 # this is the correct manifest file - maxis coordinates are shifted when on minus strand
@@ -475,38 +429,46 @@ display(df)
 assert df.shape[0] == original_probes_df_sorted.shape[0]
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ##### Add motif and strand
+
+# ***** Add motif and strand
 
 # + [markdown] tags=[]
-# ## Annotation
+
+# ** Annotation
 
 # + [markdown] tags=[]
-# ### Gene annotation
+
+# *** Gene annotation
 
 # + [markdown] tags=[] heading_collapsed="true"
-# #### Perform annotation
+
+# **** Perform annotation
 
 # + tags=[]
 # %%time
 ga.annotate(
-    query_bed=illumina_coordinate_bed,
-    gtf_fp=gencode_coding_canonical_gtf,
-    trunk_path=custom_intervals_trunk_path,
+    query_bed=paths.illumina_coordinate_bed,
+    gtf_fp=paths.gencode_coding_canonical_gtf,
+    trunk_path=paths.custom_intervals_trunk_path,
     tmpdir=temp_dir_name,
     promoter=(-1500, 500),
     distant_cis_regulatory_domain=(-100_000, 100_000),
 )
 
 # + [markdown] tags=[]
-# #### Inspect annotations
+
+# **** Inspect annotations
+
 # -
 
-primary_annos = pd.read_pickle(custom_intervals_results_paths_d["primary_annos_p"])
+primary_annos = pd.read_pickle(paths.custom_intervals_results_paths_d["primary_annos_p"])
 
 primary_annos.shape
 
 # + [markdown] tags=[]
-# ##### General checks
+
+# ***** General checks
+
 # -
 
 primary_annos.query('feat_class == "Promoter"').head(3)
@@ -514,10 +476,13 @@ primary_annos.query('feat_class == "Promoter"').head(3)
 primary_annos.query('feat_class == "exon"').head(3)
 
 # + [markdown] tags=[]
-# ##### Multiple assignments per region
+
+# ***** Multiple assignments per region
 
 # + [markdown] tags=[]
-# ###### How is this distributed across feature classes?
+
+# ****** How is this distributed across feature classes?
+
 # -
 
 multi_annos_crosstab = (
@@ -533,7 +498,9 @@ multi_annos_crosstab
 # multi_annos_crosstab.to_clipboard()
 
 # + [markdown] tags=[]
-# ###### Example for Promoter multiple annotations - random samples indicate that these are indeed ambiguous sites
+
+# ****** Example for Promoter multiple annotations - random samples indicate that these are indeed ambiguous sites
+
 # -
 
 primary_annos["is_duplicated"] = primary_annos.duplicated(
@@ -553,7 +520,9 @@ display(df.tail(20))
 # http://www.ensembl.org/Mus_musculus/Gene/Summary?db=core;g=ENSMUSG00000043716;r=1:16171519-16174886
 
 # + [markdown] tags=[] heading_collapsed="true"
-# #### merge annotations
+
+# **** merge annotations
+
 # -
 
 # Merging strategy: keep all
@@ -600,11 +569,13 @@ pd.testing.assert_frame_equal(
 merged_annos_final.iloc[0]
 
 # + [markdown] heading_collapsed="true" tags=[]
-# #### Finalize annotation tables
+
+# **** Finalize annotation tables
+
 # -
 
 merged_annos_final.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
-    gene_annos_primary_one_row, sep="\t", header=True, index=False
+    paths.gene_annos_primary_one_row, sep="\t", header=True, index=False
 )
 
 primary_annos_final = (
@@ -619,13 +590,15 @@ primary_annos_final = (
 )
 
 primary_annos_final.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
-    gene_annos_primary_multi_row, sep="\t", header=True, index=False
+    paths.gene_annos_primary_multi_row, sep="\t", header=True, index=False
 )
 
-# !head {gene_annos_primary_multi_row}
+# !head {paths.gene_annos_primary_multi_row}
 
 # + [markdown] tags=[] heading_collapsed="true"
-# ### CpG island annotations
+
+# *** CpG island annotations
+
 # -
 
 cpg_island_classif_df = lib.classify_cpg_island_overlap(
@@ -634,11 +607,11 @@ cpg_island_classif_df = lib.classify_cpg_island_overlap(
 )
 cpg_island_classif_df.head(3)
 
-# ### Merge all annotations
+# *** Merge all annotations
 
 cpg_island_classif_df
 merged_annos_final
 
-# # End
+# * End
 
 
