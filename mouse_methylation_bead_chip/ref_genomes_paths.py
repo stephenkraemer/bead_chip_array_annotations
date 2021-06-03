@@ -123,13 +123,17 @@ ref_genome_urls = {
     'bl6nj': bl6nj_fa_2bit_url,
 }
 
+ref_genomes = list(ref_genome_urls.keys())
+
 # * File paths
 
 # - for all files, indices etc. will be placed next to the file
 # - directories are autocreated by snakemake during download
 
-fa_gz_pattern = ref_genomes_dir + '/{ref_genome}/{ref_genome}.fa.gz'
-twobit_pattern = ref_genomes_dir + '/{ref_genome}/{ref_genome}.2bit'
+fa_gz_by_ref_genome = ref_genomes_dir + '/{ref_genome}/{ref_genome}.fa.gz'
+twobit_by_ref_genome = ref_genomes_dir + '/{ref_genome}/{ref_genome}.2bit'
+biscuit_index_done_by_ref_genome = fa_gz_by_ref_genome + '_biscuit-index.done'
+
 # ** Mouse reference genoms
 
 mm10_fa_gz = ref_genomes_dir + '/mm10/mm10.fa.gz'

@@ -1,6 +1,6 @@
 import mouse_methylation_bead_chip.ref_genomes_paths as ref_genome_paths
 import mouse_methylation_bead_chip.beadchip_probe_annotation_paths as paths
-from snakemake.io import temp, touch
+from snakemake.io import temp, touch, expand
 
 log_dir = paths.project_dir + '/snakemake-logs'
 
@@ -8,37 +8,45 @@ log_dir = paths.project_dir + '/snakemake-logs'
 
 rule all:
     input:
-        ref_genome_paths.mm10_fa_gz
-        ref_genome_paths.mm39_fa_gz
-        ref_genome_paths.balb_fa_2bit
-        ref_genome_paths.c3h_fa_2bit
-        ref_genome_paths.bl6nj_fa_2bit
-        ref_genome_paths.s1_fa_2bit
-        ref_genome_paths.aj_fa_2bit
-        # ref_genome_paths.balb_fa_gz
-        # ref_genome_paths.c3h_fa_gz
-        # ref_genome_paths.bl6nj_fa_gz
-        # ref_genome_paths.s1_fa_gz
-        # ref_genome_paths.aj_fa_gz
-        ref_genome_paths.hg19_fa_gz
-        ref_genome_paths.hg38_fa_gz
+        expand(
+            ref_genome_paths.biscuit_index_done_by_ref_genome,
+            ref_genome = ref_genome_paths.ref_genomes,
+            )
+
+        # ref_genome_paths.balb_fa_gz,
+        # ref_genome_paths.mm39_fa_gz,
+
+        # ref_genome_paths.mm10_fa_gz,
+        # ref_genome_paths.c3h_fa_gz,
+        # ref_genome_paths.bl6nj_fa_gz,
+        # ref_genome_paths.s1_fa_gz,
+        # ref_genome_paths.aj_fa_gz,
+        # ref_genome_paths.hg19_fa_gz,
+        # ref_genome_paths.hg38_fa_gz,
+
+        # ref_genome_paths.balb_fa_2bit,
+        # ref_genome_paths.c3h_fa_2bit,
+        # ref_genome_paths.bl6nj_fa_2bit,
+        # ref_genome_paths.s1_fa_2bit,
+        # ref_genome_paths.aj_fa_2bit,
 
 # * Download
 
 rule download_and_bgzip_index_ref_genome_fa_gz:
     output:
-        ref_fa_gz = ref_genome_paths.fa_gz_pattern,
+        ref_fa_gz = ref_genome_paths.fa_gz_by_ref_genome,
         # ref_fai = ref_genome_paths.ref_genomes_dir + '/{ref_genome}/{ref_genome}.fai',
         # used either for
         # 1.save fa_gz to temp during download so that we can then bgzip it to the final destination
         # 2. 2bit file has to be saved to disk cannot be piped, then it still needs to be bgzipped and indexed
-        ref_fa_gz_temp = temp(ref_genome_paths.fa_gz_pattern + '.tmp'),
-        two_bit = ref_genome_paths.twobit_pattern,
+        ref_fa_gz_temp = temp(ref_genome_paths.fa_gz_by_ref_genome + '.tmp'),
+        two_bit = temp(ref_genome_paths.twobit_by_ref_genome),
     params:
         url = lambda wildcards: ref_genome_paths.ref_genome_urls[wildcards.ref_genome],
+    resources:
         avg_mem = 500,
         mem_mb = 500,
-        walltime_min = lambda attempt: 10 * attempt,
+        walltime_min = lambda wildcards, attempt: 10 * attempt,
     threads: 1
     log:
         out = log_dir + '/download_{ref_genome}.out',
@@ -47,33 +55,42 @@ rule download_and_bgzip_index_ref_genome_fa_gz:
         """
         exec >{log.out}
         exec 2>{log.err}
-        # note that the temp file could also be a 2bit file, file name is not ideal
-        if [[ {url} == *.2bit ]]; then
-            wget -O {output.two_bit} {url}
+
+        echo "starting download"
+        if [[ {params.url} == *.2bit ]]; then
+            wget -O {output.two_bit} {params.url}
+            # ~ 1 min
             twoBitToFa {output.two_bit} {output.ref_fa_gz_temp}
+            echo "bgzip"
+            # ~ 1 min
+            bgzip --stdout {output.ref_fa_gz_temp} > {output.ref_fa_gz}
         else
-            wget -O {output.ref_fa_gz_temp} {url}
+            # is this necessary?
+            touch {output.two_bit}
+            wget -O {output.ref_fa_gz_temp} {params.url}
+            echo "bgzip"
+            zcat {output.ref_fa_gz_temp} | bgzip > {output.ref_fa_gz}
         fi
-        zcat {output.ref_fa_gz_temp} | bgzip > {output.ref_fa_gz}
+
+        echo "index"
         samtools faidx {output.ref_fa_gz}
         """
 
 # * Biscuit
 
-biscuit_index_done_pattern = ref_genome_paths.ref_genomes_dir + '/{ref_genome}/{reg_genome}.fa.gz' + '_biscuit-index.done'
 rule biscuit_index:
     input:
-        ref_fa_gz = ref_genome_paths.ref_genomes_dir + '/{ref_genome}/{reg_genome}.fa.gz',
+        ref_fa_gz = ref_genome_paths.fa_gz_by_ref_genome,
     output:
-        touch(biscuit_index_done_pattern),
-    params:
+        touch(ref_genome_paths.biscuit_index_done_by_ref_genome),
+    resources:
         avg_mem = 6000,
         mem_mb = 6000,
-        walltime_min = lambda attempt: 7 * 60 * attempt,
+        walltime_min = lambda wildcards, attempt: 7 * 60 * attempt,
     threads: 1
     log:
-        out = log_dir + '/download_{ref_genome}.out',
-        err = log_dir + '/download_{ref_genome}.err',
+        out = log_dir + '/biscuit-index_{ref_genome}.out',
+        err = log_dir + '/biscuit-index_{ref_genome}.err',
     shell:
         """
         exec >{log.out}
@@ -83,19 +100,19 @@ rule biscuit_index:
 
 rule biscuit_align:
     input:
-        biscuit_index = biscuit_index_done_pattern,
-        fa_gz = fa_gz_pattern,
-        probe_sequences_fq = paths.probe_sequences_fq,
+        biscuit_index = ref_genome_paths.biscuit_index_done_by_ref_genome,
+        fa_gz = ref_genome_paths.fa_gz_by_ref_genome,
+        probe_sequences_fq = paths.prob_seqs_by_probe_set_name,
     output:
-        bam = paths.biscuit_bam_pattern,
+        bam = paths.biscuit_bam_by_ref_genome_probe_set,
     threads: 16
-    params:
+    resources:
         avg_mem = 6000,
         mem_mb = 6000,
-        walltime_min = lambda attempt: 20 * attempt,
+        walltime_min = lambda wildcards, attempt: 20 * attempt,
     log:
-        out = log_dir + '/download_{ref_genome}.out',
-        err = log_dir + '/download_{ref_genome}.err',
+        out = log_dir + '/align_{ref_genome}_{probe_set_name}.out',
+        err = log_dir + '/align_{ref_genome}_{probe_set_name}.err',
     shell:
         """
         exec >{log.out}
@@ -104,5 +121,5 @@ rule biscuit_align:
                 -t {threads} \
                 {input.fa_gz} \
                 {input.probe_sequences_fq} \
-            > {bam}
+            > {output.bam}
         """

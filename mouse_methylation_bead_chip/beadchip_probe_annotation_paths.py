@@ -75,7 +75,8 @@ gene_annos_primary_multi_row = project_dir + "/gene-annos_primary_multi-row.bed"
 specificity_analysis_dir = project_dir + '/probe-specificity'
 probe_sequences_dir = specificity_analysis_dir + '/probe-sequences'
 os.makedirs(probe_sequences_dir, exist_ok = True)
-probe_sequences_fq = probe_sequences_dir + '/probe-seqs.fq'
+prob_seqs_by_probe_set_name = probe_sequences_dir + '/probe-seqs_{probe_set_name}.fq'
+probe_seqs_v1_fq = prob_seqs_by_probe_set_name.format(probe_set_name = 'probes_v1')
 
 # *** Alignment
 
@@ -84,3 +85,4 @@ os.makedirs(probe_alignments_dir, exist_ok = True)
 probe_alignment_bam = probe_alignments_dir + '/probes.bam'
 # ** Alignments
 
+biscuit_bam_by_ref_genome_probe_set = project_dir + '/alignments/{ref_genome}/{probe_set_name}/{ref_genome}_{probe_set_name}.bam'

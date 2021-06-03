@@ -6,5 +6,8 @@ setup(
     author='Stephen Kraemer',
     author_email='stephenkraemer@gmail.com',
     license='MIT',
-    packages = find_packages(),
+    packages = ['mouse_methylation_bead_chip'],
+    package_data={
+        '': ['*.R', '*.snakefile', '*.yml', '*.yaml', '*.sh', '*.smk', '*.rules'],
+    },
 )
