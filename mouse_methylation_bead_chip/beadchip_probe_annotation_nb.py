@@ -14,7 +14,7 @@
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# * TODO
+# # TODO
 
 # -
 
@@ -39,11 +39,11 @@
 
 # + [markdown] tags=[]
 
-# * Setup
+# # Setup
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ** Resource parameters
+# ## Resource parameters
 
 # -
 
@@ -51,7 +51,7 @@ n_cores = 12
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ** Imports
+# ## Imports
 
 # + tags=[]
 # isort: off
@@ -89,7 +89,7 @@ import mouse_methylation_bead_chip.beadchip_probe_annotation_paths as paths
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ** Rerun flags
+# ## Rerun flags
 
 # -
 
@@ -97,7 +97,7 @@ recompute = True
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ** Dtypes
+# ## Dtypes
 
 # -
 
@@ -131,7 +131,7 @@ chrom_dtype_prefixed = pd.api.types.CategoricalDtype(
 
 # + [markdown] tags=[]
 
-# * Paths
+# # Paths
 
 temp_dir_obj = tempfile.TemporaryDirectory(dir=paths.project_dir)
 temp_dir_name = temp_dir_obj.name
@@ -139,15 +139,15 @@ temp_dir_name
 
 # + [markdown] tags=[]
 
-# * Analysis
+# # Analysis
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ** Prepare input data
+# ## Prepare input data
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# *** CpG island annos
+# ### CpG island annos
 
 # +
 import mouse_hema_meth.genome_annotations.get_genome_annos_paths as get_genome_annos_paths
@@ -156,11 +156,11 @@ cpg_islands_pickle_d = get_genome_annos_paths.cpg_islands_shores_shelves_pickle_
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# *** Prepare gene annotation
+# ### Prepare gene annotation
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# **** download gencode
+# #### download gencode
 
 # + tags=[]
 if recompute:
@@ -174,7 +174,7 @@ if recompute:
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# **** Filter and reformat gencode GTF
+# #### Filter and reformat gencode GTF
 
 # -
 
@@ -232,15 +232,15 @@ gencode_pr.to_gtf(paths.gencode_coding_canonical_gtf)
 
 # + [markdown] tags=[]
 
-# *** Prepare and inspect probes files
+# ### Prepare and inspect probes files
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# **** Probe file from Maxi
+# #### Probe file from Maxi
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ***** Inspect original probes file
+# ##### Inspect original probes file
 
 # -
 
@@ -249,7 +249,7 @@ gencode_pr.to_gtf(paths.gencode_coding_canonical_gtf)
 
 # + [markdown] tags=[]
 
-# ****** General overview
+# ###### General overview
 
 # -
 
@@ -272,7 +272,7 @@ original_probes_df
 
 # + [markdown] tags=[]
 
-# ****** File is not fully sorted
+# ###### File is not fully sorted
 
 # -
 
@@ -287,7 +287,7 @@ original_probes_df_sorted.Chromosome.dtype
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ****** Several probes are present with the same coordinates, but different names
+# ###### Several probes are present with the same coordinates, but different names
 
 # -
 
@@ -301,7 +301,7 @@ original_probes_df.loc[
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ***** Reformat probes file
+# ##### Reformat probes file
 
 # -
 
@@ -326,11 +326,11 @@ probes_df_no_prefix_sorted.to_csv(
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# **** Illumina probe file
+# #### Illumina probe file
 
 # + [markdown] tags=[]
 
-# ***** Schema
+# ##### Schema
 
 # -
 
@@ -339,7 +339,7 @@ probes_df_no_prefix_sorted.to_csv(
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ***** Download
+# ##### Download
 
 # -
 
@@ -350,7 +350,7 @@ if recompute:
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ***** Get curated BED intervals for probes
+# ##### Get curated BED intervals for probes
 
 # -
 
@@ -406,7 +406,7 @@ illumina_probes_curated_chrom_defined.assign(
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ***** Check against Maxis probes to see whether I have correct manifest file
+# ##### Check against Maxis probes to see whether I have correct manifest file
 
 # -
 
@@ -430,19 +430,19 @@ assert df.shape[0] == original_probes_df_sorted.shape[0]
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# ***** Add motif and strand
+# ##### Add motif and strand
 
 # + [markdown] tags=[]
 
-# ** Annotation
+# ## Annotation
 
 # + [markdown] tags=[]
 
-# *** Gene annotation
+# ### Gene annotation
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# **** Perform annotation
+# #### Perform annotation
 
 # + tags=[]
 # %%time
@@ -457,7 +457,7 @@ ga.annotate(
 
 # + [markdown] tags=[]
 
-# **** Inspect annotations
+# #### Inspect annotations
 
 # -
 
@@ -467,7 +467,7 @@ primary_annos.shape
 
 # + [markdown] tags=[]
 
-# ***** General checks
+# ##### General checks
 
 # -
 
@@ -477,11 +477,11 @@ primary_annos.query('feat_class == "exon"').head(3)
 
 # + [markdown] tags=[]
 
-# ***** Multiple assignments per region
+# ##### Multiple assignments per region
 
 # + [markdown] tags=[]
 
-# ****** How is this distributed across feature classes?
+# ###### How is this distributed across feature classes?
 
 # -
 
@@ -499,7 +499,7 @@ multi_annos_crosstab
 
 # + [markdown] tags=[]
 
-# ****** Example for Promoter multiple annotations - random samples indicate that these are indeed ambiguous sites
+# ###### Example for Promoter multiple annotations - random samples indicate that these are indeed ambiguous sites
 
 # -
 
@@ -521,7 +521,7 @@ display(df.tail(20))
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# **** merge annotations
+# #### merge annotations
 
 # -
 
@@ -570,7 +570,7 @@ merged_annos_final.iloc[0]
 
 # + [markdown] heading_collapsed="true" tags=[]
 
-# **** Finalize annotation tables
+# #### Finalize annotation tables
 
 # -
 
@@ -597,7 +597,7 @@ primary_annos_final.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
 
 # + [markdown] tags=[] heading_collapsed="true"
 
-# *** CpG island annotations
+# ### CpG island annotations
 
 # -
 
@@ -607,11 +607,11 @@ cpg_island_classif_df = lib.classify_cpg_island_overlap(
 )
 cpg_island_classif_df.head(3)
 
-# *** Merge all annotations
+# ### Merge all annotations
 
 cpg_island_classif_df
 merged_annos_final
 
-# * End
+# # End
 
 
