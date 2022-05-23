@@ -4,7 +4,7 @@ import os
 # ** Project paths
 
 project_dir = (
-    "/icgc/dkfzlsdf/analysis/B080/kraemers/projects/epic-arrays-for-hematopoiesis"
+    "/omics/groups/OE0029/internal/kraemers/projects/epic-arrays-for-hematopoiesis"
 )
 
 # ** Gencode
