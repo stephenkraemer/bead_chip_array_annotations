@@ -1,13 +1,20 @@
-# ** Imports
+# # Paths
+
+# # Imports
 
 import os
-# ** Project paths
+# # Project paths
 
 project_dir = (
     "/omics/groups/OE0029/internal/kraemers/projects/epic-arrays-for-hematopoiesis"
 )
 
-# ** Gencode
+# # Reference genome
+
+mm10_fa_url = 'http://hgdownload.cse.ucsc.edu/goldenpath/mm10/bigZips/mm10.fa.gz'
+mm10_fa = project_dir + '/ucsc_mm10.fa.gz'
+
+# # Gencode
 
 gencode_download_url = "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M25/gencode.vM25.annotation.gtf.gz"
 
@@ -21,7 +28,7 @@ gencode_coding_canonical_gtf = (
     project_dir + "/gencode.vM25.annotation_coding_canonical.gtf.gz"
 )
 
-# ** Probes
+# # Probes
 
 # path to original probe file
 
@@ -46,9 +53,9 @@ illumina_probes_csv = (
 
 illumina_coordinate_bed = project_dir + "/illumina-all-probes.bed"
 
-# ** Gene annotation results
+# # Gene annotation results
 
-# *** gtfanno results
+# ## gtfanno results
 
 custom_intervals_results_dir = project_dir + "/custom-intervals_1500-500"
 os.makedirs(custom_intervals_results_dir, exist_ok=True)
@@ -65,12 +72,22 @@ custom_intervals_results_paths_d = dict(
     all_annos_p=custom_intervals_trunk_path + "_all-annotations.p",
 )
 
-# *** Final tables
+# ## Final tables
+
+# v1 annos do not annotate CHR in ['0', nan] probes
 
 gene_annos_primary_one_row = project_dir + "/gene-annos_primary_one-row.bed"
 gene_annos_primary_multi_row = project_dir + "/gene-annos_primary_multi-row.bed"
-# ** Specificity
-# *** Probes sequences
+
+# v2 probes provide annos for all illumina probes in manifest order
+# annos are NA for CHR in ['0', nan] probes
+
+gene_annos_primary_one_row_v2 = project_dir + "/gene-annos_primary_one-row_v2.bed"
+gene_annos_primary_multi_row_v2 = project_dir + "/gene-annos_primary_multi-row_v2.bed"
+
+# # Specificity
+
+# ## Probes sequences
 
 specificity_analysis_dir = project_dir + '/probe-specificity'
 probe_sequences_dir = specificity_analysis_dir + '/probe-sequences'
@@ -78,11 +95,11 @@ os.makedirs(probe_sequences_dir, exist_ok = True)
 prob_seqs_by_probe_set_name = probe_sequences_dir + '/probe-seqs_{probe_set_name}.fq'
 probe_seqs_v1_fq = prob_seqs_by_probe_set_name.format(probe_set_name = 'probes_v1')
 
-# *** Alignment
+# ## Alignment
 
 probe_alignments_dir = specificity_analysis_dir + '/probe-alignments'
 os.makedirs(probe_alignments_dir, exist_ok = True)
 probe_alignment_bam = probe_alignments_dir + '/probes.bam'
-# ** Alignments
+# # Alignments
 
 biscuit_bam_by_ref_genome_probe_set = project_dir + '/alignments/{ref_genome}/{probe_set_name}/{ref_genome}_{probe_set_name}.bam'
