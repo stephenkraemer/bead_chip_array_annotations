@@ -1227,22 +1227,8 @@ final_cols_d = {
 
 final_anno_table = m3[list(final_cols_d.keys())].rename(columns=final_cols_d)
 
-assert (
-    final_anno_table.query('Cpg_island_region_class == "CpG islands"')[
-        "Cpg_island_distance"
-    ]
-    .eq(0)
-    .all()
-)
-
-final_anno_table.query("Cpg_island_distance != 0")[
-    ["Start", "Cpg_island_region_start", "Cpg_island_region_end", "Cpg_island_distance"]
-]
-
 # %%
 final_anno_table.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
     probe_annos_one_row_bed_csv, sep="\t", header=True, index=False
 )
 final_anno_table.to_parquet(probe_annos_one_row_bed_parquet)
-
-# %%
