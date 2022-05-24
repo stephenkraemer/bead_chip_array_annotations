@@ -21,6 +21,10 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 import pyranges as pr
+import subprocess
+from pathlib import Path
+
+import mouse_methylation_bead_chip.beadchip_probe_annotation_paths as paths
 
 
 # -
@@ -153,3 +157,72 @@ def _agg_multi_value_columns(ser):
         return ser.str.cat(sep=",")
 
 
+def classify_motif(s):
+    if s[2] == "C":
+        if s[3] == "G":
+            return "CG"
+        elif s[3] == "N":
+            return "CN"
+        elif s[4] == "G":
+            return "CHG"
+        elif s[4] == "N":
+            return "CHN"
+        else:
+            return "CHH"
+    elif s[2] == "G":
+        if s[1] == "C":
+            return "CG"
+        elif s[1] == "N":
+            return "CN"
+        elif s[0] == "C":
+            return "CHG"
+        elif s[0] == "N":
+            return "CHN"
+        else:
+            return "CHH"
+    else:
+        return "D"
+
+
+def find_cytosine_strand_and_motif(df, temp_dir_name, fa_bgz):
+    """
+
+    chrom names must match ref genome
+    """
+
+    regions_txt = temp_dir_name + "/regions.txt"
+    Path(regions_txt).write_text(
+        (
+            df["Chromosome"].astype(str)
+            + ":"
+            + df["Start"].add(1 - 2).astype(str)
+            + "-"
+            + df["End"].add(2).astype(str)
+        ).str.cat(sep="\n")
+    )
+
+
+    res_txt = temp_dir_name + "/res.txt"
+    proc2 = subprocess.run(
+        [
+            "samtools",
+            "faidx",
+            "-r",
+            regions_txt,
+            "-o",
+            res_txt,
+            fa_bgz,
+        ],
+        check=True,
+        capture_output=True,
+        encoding="utf-8",
+    )
+
+    bases_ser = pd.Series(
+        [s for s in Path(res_txt).read_text().upper().split() if not s.startswith(">")]
+    )
+
+    strand_ser = bases_ser.str.slice(2, 3).map({"C": "+", "G": "-"}).fillna("NA")
+    motifs_ser = bases_ser.map(classify_motif)
+
+    return strand_ser, motifs_ser

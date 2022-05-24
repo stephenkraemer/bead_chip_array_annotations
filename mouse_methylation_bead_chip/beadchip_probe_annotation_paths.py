@@ -1,4 +1,7 @@
+from pathlib import Path
+
 # # Paths
+
 
 # # Imports
 
@@ -13,6 +16,14 @@ project_dir = (
 
 mm10_fa_url = 'http://hgdownload.cse.ucsc.edu/goldenpath/mm10/bigZips/mm10.fa.gz'
 mm10_fa = project_dir + '/ucsc_mm10.fa.gz'
+mm10_fa_bgz = project_dir + '/ucsc_mm10.fa.bgz'
+
+ncbi_mm10_fa_url = 'https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Mus_musculus/all_assembly_versions/GCF_000001635.26_GRCm38.p6/GCF_000001635.26_GRCm38.p6_genomic.fna.gz'
+ncbi_mm10_fa = project_dir + '/ncbi_mm10.fa.gz'
+ncbi_mm10_fa_bgz = project_dir + '/ncbi_mm10.fa.bgz'
+
+chrom_alias_url = 'https://hgdownload.cse.ucsc.edu/goldenPath/mm10/database/chromAlias.txt.gz'
+chrom_alias_txt_gz = project_dir + '/chromAlias.txt.gz'
 
 # # Gencode
 
@@ -27,6 +38,9 @@ gencode_gtf = project_dir + "/gencode.vM25.annotation.gtf.gz"
 gencode_coding_canonical_gtf = (
     project_dir + "/gencode.vM25.annotation_coding_canonical.gtf.gz"
 )
+# # CpG islands
+cpg_islands_ucsc_unmasked_url = 'http://hgdownload.cse.ucsc.edu/goldenpath/mm10/database/cpgIslandExt.txt.gz'
+cpg_islands_ucsc_unmasked_txt_gz = project_dir + "/cpg-islands_ucsc_unmasked.txt.gz"
 
 # # Probes
 
@@ -82,8 +96,8 @@ gene_annos_primary_multi_row = project_dir + "/gene-annos_primary_multi-row.bed"
 # v2 probes provide annos for all illumina probes in manifest order
 # annos are NA for CHR in ['0', nan] probes
 
-gene_annos_primary_one_row_v2 = project_dir + "/gene-annos_primary_one-row_v2.bed"
-gene_annos_primary_multi_row_v2 = project_dir + "/gene-annos_primary_multi-row_v2.bed"
+probe_annos_one_row_bed_csv = project_dir + "/gene-annos_primary_one-row_v2.bed"
+probe_annos_one_row_bed_parquet = project_dir + "/gene-annos_primary_one-row_v2.parquet"
 
 # # Specificity
 
@@ -103,3 +117,14 @@ probe_alignment_bam = probe_alignments_dir + '/probes.bam'
 # # Alignments
 
 biscuit_bam_by_ref_genome_probe_set = project_dir + '/alignments/{ref_genome}/{probe_set_name}/{ref_genome}_{probe_set_name}.bam'
+
+# # Auto-create dirs
+
+for value in globals().copy().values():
+    if (
+        isinstance(value, str)
+        and value.startswith(project_dir)
+        and not "{" in value
+    ):
+        # print(value)
+        Path(value).parent.mkdir(exist_ok=True, parents=True)

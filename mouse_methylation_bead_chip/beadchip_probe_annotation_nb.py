@@ -60,6 +60,7 @@ import numpy as np
 
 import subprocess
 import tempfile
+from pathlib import Path
 
 import gtfanno as ga
 import matplotlib.pyplot as plt
@@ -132,9 +133,116 @@ temp_dir_name
 # ### CpG island annos
 
 # %%
+if recompute:
+    subprocess.run(
+        [
+            "wget",
+            "-O",
+            paths.cpg_islands_ucsc_unmasked_txt_gz,
+            paths.cpg_islands_ucsc_unmasked_url,
+        ]
+    )
+
+# %%
+cpg_islands_df = (
+    pd.read_csv(
+        paths.cpg_islands_ucsc_unmasked_txt_gz,
+        sep="\t",
+        header=None,
+        names="bin Chromosome Start End name length cpgNum gcNum perCpg perGc obsExp".split(),
+    )
+    .astype({"Chromosome": chrom_dtype_prefixed})
+    .dropna()
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+)
+cpg_islands_df["uid"] = cpg_islands_df.index
+
+# %%
+print(
+    "chrMT" in cpg_islands_df.Chromosome.unique(),
+    "chrM" in cpg_islands_df.Chromosome.unique(),
+)
+
+# %%
+# cpg_islands_df = cpg_islands_df.loc[cpg_islands_df.Chromosome.isin(chrom_dtype_prefixed.categories)].reset_index(drop=True)
+# cpg_islands_df.Chromosome.unique()
+
+# %%
+cpg_upstream_shores = cpg_islands_df[["Chromosome", "Start", "End", "uid"]].copy()
+cpg_upstream_shores["End"] = cpg_islands_df["Start"]
+cpg_upstream_shores["Start"] = cpg_islands_df["Start"] - 2000
+cpg_downstream_shores = cpg_islands_df[["Chromosome", "Start", "End", "uid"]].copy()
+cpg_downstream_shores["Start"] = cpg_islands_df["End"]
+cpg_downstream_shores["End"] = cpg_islands_df["End"] + 2000
+cpg_shores_df = (
+    pd.concat([cpg_upstream_shores, cpg_downstream_shores], axis=0)
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+    .astype({"Chromosome": chrom_dtype_prefixed})
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+)
+
+# %%
+cpg_upstream_shelves = cpg_islands_df[["Chromosome", "Start", "End", "uid"]].copy()
+cpg_upstream_shelves["End"] = cpg_islands_df["Start"] - 2000
+cpg_upstream_shelves["Start"] = cpg_islands_df["Start"] - 4000
+cpg_downstream_shelves = cpg_islands_df[["Chromosome", "Start", "End", "uid"]].copy()
+cpg_downstream_shelves["Start"] = cpg_islands_df["End"] + 2000
+cpg_downstream_shelves["End"] = cpg_islands_df["End"] + 4000
+cpg_shelves_df = (
+    pd.concat([cpg_upstream_shelves, cpg_downstream_shelves], axis=0)
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+    .astype({"Chromosome": chrom_dtype_prefixed})
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+)
+
+
+# %%
 import mouse_hema_meth.genome_annotations.get_genome_annos_paths as get_genome_annos_paths
 
 cpg_islands_pickle_d = get_genome_annos_paths.cpg_islands_shores_shelves_pickle_paths_d
+
+pd.testing.assert_frame_equal(
+    pd.read_pickle(cpg_islands_pickle_d["CpG islands"])
+    .reset_index(drop=True)
+    .astype({"Chromosome": chrom_dtype_prefixed})
+    .dropna()
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True),
+    cpg_islands_df[["Chromosome", "Start", "End"]],
+)
+
+a = (
+    pd.read_pickle(cpg_islands_pickle_d["CpG shores"])
+    .reset_index(drop=True)
+    .astype({"Chromosome": chrom_dtype_prefixed})
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+)
+
+pd.testing.assert_frame_equal(a, cpg_shores_df[["Chromosome", "Start", "End"]])
+
+b = (
+    pd.read_pickle(cpg_islands_pickle_d["CpG shelves"])
+    .reset_index(drop=True)
+    .astype({"Chromosome": chrom_dtype_prefixed})
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+)
+c = (
+    pd.read_pickle(cpg_islands_pickle_d["CpG shores"])
+    .reset_index(drop=True)
+    .astype({"Chromosome": chrom_dtype_prefixed})
+    .sort_values(["Chromosome", "Start", "End"])
+    .reset_index(drop=True)
+)
+pd.testing.assert_frame_equal(a, cpg_shores_df[["Chromosome", "Start", "End"]])
+pd.testing.assert_frame_equal(a, b)
+
 
 # %% [markdown] tags=[] heading_collapsed="true"
 #
@@ -459,88 +567,11 @@ merged_annos_new_chrom_dtype = (
 )
 assert merged_annos_new_chrom_dtype["Chromosome"].notnull().all()
 
-# %% [markdown]
-# merge gene annos into illumina probe df
-
 # %%
-merged_annos_final = pd.merge(
-    illumina_probe_intervals_bed_convention,
-    merged_annos_new_chrom_dtype.astype({"Start": "Int64", "End": "Int64"}),
-    on=["Chromosome", "Start", "End"],
-    how="left",
+merged_annos_new_chrom_dtype = merged_annos_new_chrom_dtype.astype(
+    {"Start": "Int64", "End": "Int64"}
 )
 
-# %%
-merged_annos_final.head(3)
-
-# %%
-assert merged_annos_final["name"].notnull().all()
-
-# %%
-pd.testing.assert_frame_equal(
-    merged_annos_final[["Chromosome", "Start", "End", "name"]],
-    illumina_probe_intervals_bed_convention[["Chromosome", "Start", "End", "name"]],
-)
-
-# %% [markdown]
-# #### Finalize annotation tables
-
-# %%
-# assert against older version of annotation (which left out CHR in ['0', nan] probes)
-
-# %%
-gene_annos_primary_one_row_v1 = pd.read_csv(
-    paths.gene_annos_primary_one_row,
-    sep="\t",
-    keep_default_na=False,
-    na_values="",
-    dtype={
-        "#Chromosome": chrom_dtype_prefixed,
-        "feat_class": merged_annos_final["feat_class"].dtype,
-        "feat_chrom": str,
-        "center": "f8",
-        "Start": "Int64",
-        "End": "Int64",
-    },
-)
-
-# %%
-cols = [
-    "#Chromosome",
-    "Start",
-    "End",
-    "center",
-    "feat_class",
-    "perc_feature",
-    "perc_region",
-    "distance",
-    "has_center",
-    "gene_name",
-    "gene_id",
-    "transcript_id",
-    "appris_principal_score",
-    "feat_chrom",
-    "feat_start",
-    "feat_end",
-    "feat_center",
-    "feat_strand",
-    "feature_rank",
-    "name",
-]
-pd.testing.assert_frame_equal(
-    merged_annos_final.rename(columns={"Chromosome": "#Chromosome"})[cols]
-    .sort_values(["#Chromosome", "Start", "End"])
-    .loc[lambda df: df["#Chromosome"].notnull()]
-    .reset_index(drop=True),
-    gene_annos_primary_one_row_v1.drop("is_duplicated", axis=1)[cols]
-    .sort_values(["#Chromosome", "Start", "End"])
-    .reset_index(drop=True),
-)
-
-# %%
-merged_annos_final.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
-    paths.gene_annos_primary_one_row_v2, sep="\t", header=True, index=False
-)
 
 # %% [markdown]
 # ### CpG island annotations
@@ -550,6 +581,7 @@ merged_annos_final.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
 
 
 # %%
+# NOTE: if chrM is added, rename the chromosome
 # two probes at same coordinate, different name
 # remove first, merge again later
 illumina_probes_curated_chrom_defined_no_names_no_dup_intervals = (
@@ -560,6 +592,9 @@ illumina_probes_curated_chrom_defined_no_names_no_dup_intervals = (
 granges_gr = pr.PyRanges(
     illumina_probes_curated_chrom_defined_no_names_no_dup_intervals
 )
+
+# %% [markdown]
+# no annos for chrM
 
 # %%
 # join against cpg islands, shelves, shores
@@ -676,9 +711,16 @@ pd.testing.assert_series_equal(
     check_names=False,
 )
 
+nearest_cpg_island_df = nearest_cpg_island_df.rename(
+    columns={"Start_b": "next_cpg_island_start", "End_b": "next_cpg_island_end"}
+)
+
 full_cpg_island_anno_df_with_dist = pd.merge(
     full_cpg_island_anno_df,
-    nearest_cpg_island_df[grange_cols + ["distance_signed"]],
+    nearest_cpg_island_df[
+        grange_cols
+        + ["distance_signed", "next_cpg_island_start", "next_cpg_island_end"]
+    ],
     on=grange_cols,
     how="left",
 )
@@ -687,6 +729,33 @@ full_cpg_island_anno_df_with_dist.Chromosome = (
         illumina_probes_curated_chrom_defined.Chromosome.dtype
     )
 )
+
+pd.testing.assert_frame_equal(
+    full_cpg_island_anno_df_with_dist.query('region_name == "CpG islands"')[
+        ["region_start", "region_end"]
+    ].set_axis(["a", "b"], axis=1),
+    full_cpg_island_anno_df_with_dist.query('region_name == "CpG islands"')[
+        ["next_cpg_island_start", "next_cpg_island_end"]
+    ].set_axis(["a", "b"], axis=1),
+)
+
+full_cpg_island_anno_df_with_dist = full_cpg_island_anno_df_with_dist.drop(
+    ["region_start", "region_end"], axis=1
+).rename(
+    columns={
+        "next_cpg_island_start": "region_start",
+        "next_cpg_island_end": "region_end",
+    }
+)
+
+assert (
+    full_cpg_island_anno_df_with_dist.query('region_name == "CpG islands"')[
+        "distance_signed"
+    ]
+    .eq(0)
+    .all()
+)
+
 full_cpg_island_anno_df_with_dist["north_south_of_island"] = np.sign(
     full_cpg_island_anno_df_with_dist["distance_signed"]
 ).replace({0: "", 1: "N", -1: "S"})
@@ -695,6 +764,17 @@ full_cpg_island_anno_df_with_dist.loc[
     ~full_cpg_island_anno_df_with_dist.region_name.isin(["CpG shores", "CpG shelves"]),
     "north_south_of_island",
 ] = ""
+
+full_cpg_island_anno_df_with_dist = full_cpg_island_anno_df_with_dist.rename(
+    columns={
+        "region_name": "cpg_island_region_name",
+        "region_start": "cpg_island_region_start",
+        "region_end": "cpg_island_region_end",
+        "distance_signed": "cpg_island_distance",
+        "north_south_of_island": "north_south_of_cpg_island",
+    }
+)
+
 
 # check that cpg islands and open sea have no north / south, but shelves and shores do have it
 # check that strands are approx 50/50
@@ -717,110 +797,252 @@ full_cpg_island_anno_df_with_dist["distance_signed"].plot.hist(
 # %% [markdown]
 # ### Add cytosine motif and strand
 
+
+# %% [markdown]
+# #### Download ref genomes
+
+# %% [markdown]
+# ucsc mm10
+
 # %%
-
-motif_index_grange_cols = ["Chromosome", "Start", "End", "motif", "strand"]
-annotated_chrom_dfs_d = {}
-motif_dtype = pd.CategoricalDtype(categories=["CG", "CHG", "CHH"], ordered=False)
-strand_dtype = pd.CategoricalDtype(categories=["+", "-"], ordered=False)
-for (
-    chrom,
-    chrom_df,
-) in illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.groupby(
-    "Chromosome"
-):
-    print(chrom)
-    chrom_no_prefix = chrom.replace("chr", "")
-    chrom_index_bed_gz = f"/omics/groups/OE0029/internal/kraemers/projects/mbias/sandbox/genomes/GRCm38mm10_PhiX_Lambda/GRCm38mm10_PhiX_Lambda_CG-CHG-CHH_{chrom_no_prefix}.bed.gz"
-    chrom_index_df = pd.read_csv(
-        chrom_index_bed_gz,
-        sep="\t",
-        usecols=[0, 1, 2, 3, 5],
-        comment="#",
-        header=None,
-        names=motif_index_grange_cols,
-        dtype={
-            "Chromosome": str,
-            "Start": "Int64",
-            "End": "Int64",
-            "motif": motif_dtype,
-            "strand": strand_dtype,
-        },
-    )
-    assert chrom_index_df.notnull().all().all()
-    chrom_index_df["Chromosome"] = ("chr" + chrom_index_df["Chromosome"]).astype(
-        chrom_df["Chromosome"].dtype
-    )
-    chrom_df_annotated = pd.merge(
-        chrom_df,
-        chrom_index_df,
-        on=["Chromosome", "Start", "End"],
-        how="left",
-    )
-    # chrom_df_annotated[["motif", "strand"]].notnull().all().all()
-    # chrom_df_annotated.loc[chrom_df_annotated["motif"].isnull()]
-    # chrom_df.shape
-    pd.testing.assert_frame_equal(
-        chrom_df.reset_index(drop=True), chrom_df_annotated[["Chromosome", "Start", "End"]].reset_index(drop=True)
-    )
-    annotated_chrom_dfs_d[chrom] = chrom_df_annotated
-
-res = (
-    pd.concat(annotated_chrom_dfs_d)
-    # .assign(Chromosome=lambda df: df["Chromosome"].astype(chrom_dtype))
-    # .sort_values(motif_index_grange_cols)
-    # .reset_index(drop=True)
-)
-res.dtypes
-res.Chromosome
-
-
-# started: 19.40
 if recompute:
     subprocess.run(["wget", "-O", paths.mm10_fa, paths.mm10_fa_url], check=True)
-    subprocess.run(['samtools', 'faidx', paths.mm10_fa], check=True)
+    subprocess.run(
+        f"zcat {paths.mm10_fa} | bgzip > {paths.mm10_fa_bgz}", shell=True, check=True
+    )
+    subprocess.run(["samtools", "faidx", paths.mm10_fa_bgz], check=True)
 
-# add to env: samtools faidx
-from pathlib import Path
 
-regions_txt = temp_dir_name + "/regions.txt"
-df = res.loc[res["motif"].isnull()]
-Path(regions_txt).write_text((
-    df["Chromosome"].astype(str).str.replace("chr", "")
-    + ":"
-    + df["Start"].add(1).astype(str)
-    + "-"
-    + df["End"].astype(str)
-).str.cat(sep="\n"))
-proc = subprocess.run(
-    [
-        "samtools",
-        "faidx",
-        '-r',
-        regions_txt,
-    ],
-    check=True,
-    capture_output=True,
-)
-assert 'C' not in ''.join(proc.stdout)
-assert 'G' not in ''.join(proc.stdout)
+# %% [markdown]
+# NCBI GRCm38
 
 # %%
-print(
-    df.shape[0],
-    res.shape[0],
+if recompute:
+    subprocess.run(
+        ["wget", "-O", paths.ncbi_mm10_fa, paths.ncbi_mm10_fa_url], check=True
+    )
+    subprocess.run(
+        f"zcat {paths.ncbi_mm10_fa} | bgzip > {paths.ncbi_mm10_fa_bgz}",
+        shell=True,
+        check=True,
+    )
+    subprocess.run(["samtools", "faidx", paths.ncbi_mm10_fa_bgz], check=True)
+
+
+# %% [markdown]
+# #### download seq id mapper
+
+# %%
+if recompute:
+
+    subprocess.run(
+        [
+            "wget",
+            "-O",
+            paths.chrom_alias_txt_gz,
+            paths.chrom_alias_url,
+        ],
+        check=True,
     )
 
+    chrom_aliases = pd.read_csv(
+        paths.chrom_alias_txt_gz,
+        sep="\t",
+        header=None,
+        names=["other_db_id", "ucsc_id", "db"],
+    )
+
+    ucsc_to_refseq_chrom_name = chrom_aliases.query('db == "refseq"').set_index(
+        "ucsc_id"
+    )["other_db_id"]
 
 
+# %% [markdown]
+# #### Get strands and motifs
+
+# %%
+ucsc_strand_ser, ucsc_motifs_ser = lib.find_cytosine_strand_and_motif(
+    temp_dir_name=temp_dir_name,
+    df=illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.assign(
+        Chromosome=lambda df: df["Chromosome"].astype(str).replace({"chrMT": "chrM"})
+    ),
+    fa_bgz=paths.mm10_fa_bgz,
+)
+
+# %%
+
+df = illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.assign(
+    Chromosome=lambda df: df["Chromosome"]
+    .astype(str)
+    .replace({"chrMT": "chrM"})
+    .map(ucsc_to_refseq_chrom_name)
+)
+assert df.Chromosome.notnull().all()
+
+ncbi_strand_ser, ncbi_motifs_ser = lib.find_cytosine_strand_and_motif(
+    df=df,
+    temp_dir_name=temp_dir_name,
+    fa_bgz=paths.ncbi_mm10_fa_bgz,
+)
+
+
+# %%
+pd.testing.assert_series_equal(ncbi_strand_ser, ucsc_strand_ser)
+pd.testing.assert_series_equal(ncbi_motifs_ser, ucsc_motifs_ser)
+
+# %%
+ncbi_motifs_ser.value_counts(dropna=False)
+ncbi_strand_ser.value_counts(dropna=False)
+ncbi_motifs_ser.loc[ncbi_strand_ser.eq("-")].value_counts()
+
+# %%
+motifs_df_final = (
+    illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.reset_index(
+        drop=True
+    ).assign(strand=ncbi_motifs_ser, motif=ncbi_motifs_ser)
+)
+
+# %%
+motifs_df_final["motif"].value_counts(dropna=False)
 
 
 # %% [markdown]
 # ### Merge all annotations
 
 # %%
-cpg_island_classif_df
-merged_annos_final
+pd.testing.assert_frame_equal(
+    full_cpg_island_anno_df_with_dist[["Chromosome", "Start", "End"]],
+    illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.reset_index(
+        drop=True
+    ),
+)
+pd.testing.assert_frame_equal(
+    merged_annos_new_chrom_dtype[["Chromosome", "Start", "End"]],
+    illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.reset_index(
+        drop=True
+    ),
+)
+
+# %%
+exp_number_of_nas = (
+    illumina_probe_intervals_bed_convention["Chromosome"].isin([np.nan, "0"]).sum()
+)
+
+# %%
+m1 = pd.merge(
+    illumina_probe_intervals_bed_convention,
+    motifs_df_final,
+    on=["Chromosome", "Start", "End"],
+    how="left",
+)
+assert m1["motif"].isnull().sum() == exp_number_of_nas
+
+# %%
+m2 = pd.merge(
+    m1,
+    full_cpg_island_anno_df_with_dist,
+    on=["Chromosome", "Start", "End"],
+    how="left",
+)
+assert m2["cpg_island_region_name"].isnull().sum() == exp_number_of_nas
+
+# %%
+m3 = pd.merge(
+    m2,
+    merged_annos_new_chrom_dtype,
+    on=["Chromosome", "Start", "End"],
+    how="left",
+)
+assert m3["feat_class"].isnull().sum() == exp_number_of_nas
+m3["score"] = "."
+
+# %%
+final_cols_d = {
+    "Chromosome": "Chromosome",
+    "Start": "Start",
+    "End": "End",
+    "name": "IlmnID",
+    "score": "Score",
+    "strand": "Strand",
+    "motif": "Motif",
+    "feat_class": "Genomic_region_class",
+    "distance": "Distance_to_genomic_region",
+    "gene_name": "Gene_name",
+    "gene_id": "Gene_id",
+    "transcript_id": "Transcript_id",
+    "feat_strand": "Gene_strand",
+    "cpg_island_region_name": "Cpg_island_region_class",
+    "cpg_island_region_start": "Cpg_island_region_start",
+    "cpg_island_region_end": "Cpg_island_region_end",
+    "cpg_island_distance": "Cpg_island_distance",
+}
+
+final_anno_table = m3[list(final_cols_d.keys())].rename(columns=final_cols_d)
+
+assert (
+    final_anno_table.query('Cpg_island_region_class == "CpG islands"')[
+        "Cpg_island_distance"
+    ]
+    .eq(0)
+    .all()
+)
+
+final_anno_table.query("Cpg_island_distance != 0")[
+    ["Start", "Cpg_island_region_start", "Cpg_island_region_end", "Cpg_island_distance"]
+]
+
+# %%
+final_anno_table.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
+    paths.probe_annos_one_row_bed_csv, sep="\t", header=True, index=False
+)
+final_anno_table.to_parquet(paths.probe_annos_one_row_bed_parquet)
+
+
+# %%
+# assert against older version of annotation (which left out CHR in ['0', nan] probes)
+
+# %%
+gene_annos_primary_one_row_v1 = pd.read_csv(
+    paths.gene_annos_primary_one_row,
+    sep="\t",
+    keep_default_na=False,
+    na_values="",
+    dtype={
+        "#Chromosome": chrom_dtype_prefixed,
+        "feat_class": merged_annos_final["feat_class"].dtype,
+        "feat_chrom": str,
+        "center": "f8",
+        "Start": "Int64",
+        "End": "Int64",
+    },
+)
+
+# %%
+assert_cols = [
+    "#Chromosome",
+    "Start",
+    "End",
+    "Genomic_region_class",
+    "Distance",
+    "Gene_name",
+    "Gene_id",
+    "Transcript_id",
+    "Genomic_region_start",
+    "Genomic_region_end",
+    "Gene_strand",
+    "IlmnID",
+]
+
+pd.testing.assert_frame_equal(
+    final_anno_table.rename(columns={"Chromosome": "#Chromosome"})[assert_cols]
+    .sort_values(["#Chromosome", "Start", "End"])
+    .loc[lambda df: df["#Chromosome"].notnull()]
+    .reset_index(drop=True),
+    gene_annos_primary_one_row_v1.rename(columns=final_cols_d)[assert_cols]
+    .sort_values(["#Chromosome", "Start", "End"])
+    .reset_index(drop=True),
+)
+
 
 # %% [markdown]
 # # End
