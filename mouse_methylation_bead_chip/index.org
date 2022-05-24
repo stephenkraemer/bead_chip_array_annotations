@@ -1,8 +1,0 @@
-* Overview report
-
-/home/stephen/projects/mouse_methylation_bead_chip/mouse_methylation_bead_chip/beadchip_annotations.org
-/home/stephen/projects/mouse_methylation_bead_chip/mouse_methylation_bead_chip/beadchip_annotations.html
-
-* Probe annotation notebook and library
-
-/home/stephen/projects/mouse_methylation_bead_chip/mouse_methylation_bead_chip/beadchip_probe_annotation.py
