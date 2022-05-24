@@ -17,7 +17,7 @@
 # # How to reproduce this analysis
 
 # %% [markdown]
-# - install the environment
+# - install the environment (env yaml and lock file are distributed with the notebook)
 
 # %% [markdown]
 # mamba env create -f /home/stephen/projects/mouse_methylation_bead_chip/probe-anno_env.yaml
@@ -29,8 +29,8 @@
 
 # %% [markdown]
 # - specify the number of available cores in the Config section
-
-
+#
+#
 # ## Place the manifest somewhere in the project_dir
 
 
@@ -503,6 +503,7 @@ illumina_probes_curated_chrom_defined = (
 # %% [markdown]
 # assert that we have only lost the chromosome 0|na probes
 
+# %%
 n_probes_chr_defined = (
     illumina_probes.shape[0] - illumina_probes.CHR.isin(["0", np.nan]).sum()
 )
@@ -850,20 +851,20 @@ cpg_island_anno_df = pd.concat(dfs, axis=0).reset_index(drop=True)
 # some cpgs are part of multiple features, e.g. cpg is located in a CpG island and in the shelve region of another CpG island; or a CpG is located in two shelve regions of different CpG islands
 
 # %%
-grange_cols = ["Chromosome", "Start", "End"]
-cpg_island_anno_df.groupby(grange_cols, observed=True).size().value_counts()
+cpg_island_grange_cols = ["Chromosome", "Start", "End"]
+cpg_island_anno_df.groupby(cpg_island_grange_cols, observed=True).size().value_counts()
 
 # %%
-cpg_island_anno_df.set_index(grange_cols).loc[
-    cpg_island_anno_df.groupby(grange_cols, observed=True).size().gt(2)
-].sort_values(grange_cols)
+cpg_island_anno_df.set_index(cpg_island_grange_cols).loc[
+    cpg_island_anno_df.groupby(cpg_island_grange_cols, observed=True).size().gt(2)
+].sort_values(cpg_island_grange_cols)
 
 # %% [markdown]
 # Sanity check: no CpG is annotated to two CpG islands
 
 # %%
 cpg_island_anno_df.query('region_name == "cpg_island"').groupby(
-    grange_cols, observed=True
+    cpg_island_grange_cols, observed=True
 ).size().value_counts()
 
 # %% [markdown]
@@ -915,7 +916,7 @@ full_cpg_island_anno_df["region_name"] = full_cpg_island_anno_df["region_name"].
 
 
 # %% [markdown]
-# ### add distance to nearest CpG island, coordinates of nearest CpG island
+# ### add distance to nearest CpG island
 
 # %%
 nearest_cpg_island_grange = illumina_probes_curated_chrom_defined_no_names_do_dup_intervals_gr.nearest(
@@ -925,7 +926,8 @@ nearest_cpg_island_grange = illumina_probes_curated_chrom_defined_no_names_do_du
     how=None,
 )
 
-# Distance computed by pyranges has no sign
+# %%
+# Distance computed by pyranges has no sign, add it
 nearest_cpg_island_df = nearest_cpg_island_grange.df.copy()
 is_upstream = nearest_cpg_island_df.eval("Start < Start_b")
 is_downstream = nearest_cpg_island_df.eval("Start >= End_b")
@@ -943,6 +945,10 @@ pd.testing.assert_series_equal(
     check_names=False,
 )
 
+# %% [markdown]
+# ### add coords of nearest CpG island to each probe
+
+# %%
 nearest_cpg_island_df = nearest_cpg_island_df.rename(
     columns={"Start_b": "next_cpg_island_start", "End_b": "next_cpg_island_end"}
 )
@@ -956,12 +962,14 @@ full_cpg_island_anno_df_with_dist = pd.merge(
     on=grange_cols,
     how="left",
 )
+# fix lost chrom dtype (pandas problem)
 full_cpg_island_anno_df_with_dist.Chromosome = (
     full_cpg_island_anno_df_with_dist.Chromosome.astype(
         illumina_probes_curated_chrom_defined.Chromosome.dtype
     )
 )
 
+# %%
 pd.testing.assert_frame_equal(
     full_cpg_island_anno_df_with_dist.query('region_name == "CpG islands"')[
         ["region_start", "region_end"]
@@ -971,6 +979,7 @@ pd.testing.assert_frame_equal(
     ].set_axis(["a", "b"], axis=1),
 )
 
+# %%
 full_cpg_island_anno_df_with_dist = full_cpg_island_anno_df_with_dist.drop(
     ["region_start", "region_end"], axis=1
 ).rename(
@@ -980,6 +989,8 @@ full_cpg_island_anno_df_with_dist = full_cpg_island_anno_df_with_dist.drop(
     }
 )
 
+# %%
+# quick sanity check on distance
 assert (
     full_cpg_island_anno_df_with_dist.query('region_name == "cpg_island"')[
         "distance_signed"
@@ -990,7 +1001,7 @@ assert (
 
 
 # %% [markdown]
-# ### final cpg island annos
+# ### Illumina style north/south annos
 
 # %%
 full_cpg_island_anno_df_with_dist["north_south_of_island"] = np.sign(
@@ -1001,6 +1012,9 @@ full_cpg_island_anno_df_with_dist.loc[
     ~full_cpg_island_anno_df_with_dist.region_name.isin(["cpg_shore", "cpg_shelve"]),
     "north_south_of_island",
 ] = ""
+
+# %% [markdown]
+# ### Final CpG island annos
 
 # %%
 full_cpg_island_anno_df_with_dist = full_cpg_island_anno_df_with_dist.rename(
@@ -1015,7 +1029,7 @@ full_cpg_island_anno_df_with_dist = full_cpg_island_anno_df_with_dist.rename(
 
 
 # %% [markdown]
-# ### inspect results
+# ### Inspect CpG anno results
 
 # %%
 full_cpg_island_anno_df_with_dist['cpg_island_region_name'].value_counts()
