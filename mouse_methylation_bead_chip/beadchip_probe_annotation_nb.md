@@ -16,11 +16,21 @@ kernelspec:
 
 +++
 
-- install the environment (env yaml and lock file are distributed with the notebook)
+## Install the environment
 
 +++
 
-mamba env create -f /home/stephen/projects/mouse_methylation_bead_chip/probe-anno_env.yaml
+Environment yaml and lock file are distributed with the notebook
+
+```
+mamba env create -f /path/to/probe-anno_env_locked.yaml
+or for development
+mamba env create -f /path/to/probe-anno_env.yaml
+```
+
++++
+
+## Create a project directory and copy the manifest file into it
 
 +++
 
@@ -30,10 +40,11 @@ mamba env create -f /home/stephen/projects/mouse_methylation_bead_chip/probe-ann
 
 +++
 
-- specify the number of available cores in the Config section
+## Specify the available number of cores
 
++++
 
-## Place the manifest somewhere in the project_dir
+The number of cores can be specified in the Config section as well
 
 +++
 
