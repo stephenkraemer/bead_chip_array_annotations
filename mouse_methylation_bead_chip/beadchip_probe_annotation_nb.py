@@ -33,7 +33,6 @@
 #
 # ## Place the manifest somewhere in the project_dir
 
-
 # %% [markdown]
 # # Setup
 
@@ -86,10 +85,6 @@ import pandas as pd
 import pyranges as pr
 from IPython.display import display
 
-# %%
-# %matplotlib interactive
-mpl.rcParams['figure.facecolor'] = 'white'
-
 # %% [markdown]
 # ## Rerun flags
 
@@ -100,7 +95,6 @@ recompute = True
 # ## Paths and URLs
 
 # %%
-
 # ### Input data urls and filepaths
 
 # %% [markdown]
@@ -149,7 +143,6 @@ cpg_islands_ucsc_unmasked_txt_gz = project_dir + "/cpg-islands_ucsc_unmasked.txt
 # illumina_probes_url = "https://support.illumina.com/content/dam/illumina-support/documents/downloads/productfiles/mouse-methylation/Infinium%20Mouse%20Methylation%20v1.0%20A1%20GS%20Manifest%20File.csv"
 # saved to repo in case the link is not stable, use from here in the future (see Config section)
 
-
 # %% [markdown]
 # ### Output file paths
 
@@ -187,7 +180,6 @@ temp_dir_obj = tempfile.TemporaryDirectory(dir=project_dir)
 temp_dir_name = temp_dir_obj.name
 temp_dir_name
 
-
 # %% [markdown]
 # # Functions and objects
 # ## Dtypes
@@ -220,6 +212,7 @@ chrom_dtype_prefixed = pd.api.types.CategoricalDtype(
     ],
     ordered=True,
 )
+
 
 # %% [markdown]
 # ## Merge multiple gene annos per probe
@@ -346,6 +339,7 @@ def _agg_multi_value_columns(ser):
     else:
         return ser.str.cat(sep=",")
 
+
 # %% [markdown]
 # ## Classify cytosine motifs
 
@@ -375,6 +369,7 @@ def classify_motif(s):
             return "CHH"
     else:
         return "D"
+
 
 # %%
 def find_cytosine_strand_and_motif(df, temp_dir_name, fa_bgz):
@@ -549,7 +544,6 @@ illumina_probes_curated_chrom_defined_no_names_no_dup_intervals = (
 # ### Prepare gene annotation
 
 # %% [markdown] tags=[] heading_collapsed="true"
-#
 # #### download gencode
 
 # %% tags=[]
@@ -559,7 +553,6 @@ if recompute:
         check=True,
         capture_output=True,
     )
-
 
 # %% [markdown]
 # #### Filter and reformat gencode GTF
@@ -620,9 +613,6 @@ gencode_pr.df.Chromosome.unique()
 # %%
 gencode_pr.to_gtf(gencode_coding_canonical_gtf)
 
-# %%
-# !zcat {gencode_coding_canonical_gtf} | head
-
 # %% [markdown]
 # verify gtf
 
@@ -631,7 +621,6 @@ gencode_pr.to_gtf(gencode_coding_canonical_gtf)
 
 # %%
 # !zcat {gencode_coding_canonical_gtf} | grep ^appris
-
 
 # %% [markdown]
 # ### Perform gene annotations
@@ -684,7 +673,6 @@ display(df.head(20))
 display(df.tail(20))
 
 # %% [markdown]
-# TODO: exchange with appropriate ensembl version
 # Nsdhl
 # http://nov2020.archive.ensembl.org/Mus_musculus/Gene/Summary?db=core;g=ENSMUSG00000031349;r=X:71962163-72002120
 #
@@ -720,10 +708,8 @@ merged_annos_new_chrom_dtype = merged_annos_new_chrom_dtype.astype(
     {"Start": "Int64", "End": "Int64"}
 )
 
-
 # %% [markdown]
 # ## CpG island annotations
-
 
 # %% [markdown]
 # ### Download CpG island regions from UCSC
@@ -769,10 +755,8 @@ cpg_islands_df = (cpg_islands_df_prelim
     .reset_index(drop=True)
 )
 
-
 # %% [markdown]
 # ### Compute shores and shelves
-
 
 # %%
 cpg_upstream_shores = cpg_islands_df[["Chromosome", "Start", "End"]].copy()
@@ -843,7 +827,6 @@ for cpg_island_region_name, cpg_island_region_gr in cpg_islands_regions_gr_d.ite
 # NOTE: pyranges may change sorting order
 cpg_island_anno_df = pd.concat(dfs, axis=0).reset_index(drop=True)
 
-
 # %% [markdown]
 # ### Inspect multi-class assignments
 
@@ -879,7 +862,7 @@ cpg_island_anno_df_unique = (
         )
     )
     .sort_values(["Chromosome", "Start", "End", "region_name"], ascending=True)
-    .groupby(grange_cols, observed=True, as_index=False)
+    .groupby(cpg_island_grange_cols, observed=True, as_index=False)
     .first()
     .assign(
         Chromosome=lambda df: df["Chromosome"].astype(
@@ -898,7 +881,7 @@ cpg_island_anno_df_unique = (
 full_cpg_island_anno_df = pd.merge(
     illumina_probes_curated_chrom_defined_no_names_no_dup_intervals,
     cpg_island_anno_df_unique,
-    on=grange_cols,
+    on=cpg_island_grange_cols,
     how="left",
 )
 
@@ -913,7 +896,6 @@ assert (
 full_cpg_island_anno_df["region_name"] = full_cpg_island_anno_df["region_name"].fillna(
     "open_sea"
 )
-
 
 # %% [markdown]
 # ### add distance to nearest CpG island
@@ -956,10 +938,10 @@ nearest_cpg_island_df = nearest_cpg_island_df.rename(
 full_cpg_island_anno_df_with_dist = pd.merge(
     full_cpg_island_anno_df,
     nearest_cpg_island_df[
-        grange_cols
+        cpg_island_grange_cols
         + ["distance_signed", "next_cpg_island_start", "next_cpg_island_end"]
     ],
-    on=grange_cols,
+    on=cpg_island_grange_cols,
     how="left",
 )
 # fix lost chrom dtype (pandas problem)
@@ -999,7 +981,6 @@ assert (
     .all()
 )
 
-
 # %% [markdown]
 # ### Illumina style north/south annos
 
@@ -1027,7 +1008,6 @@ full_cpg_island_anno_df_with_dist = full_cpg_island_anno_df_with_dist.rename(
     }
 )
 
-
 # %% [markdown]
 # ### Inspect CpG anno results
 
@@ -1044,7 +1024,7 @@ pd.crosstab(
 
 # %%
 pd.testing.assert_frame_equal(
-    full_cpg_island_anno_df_with_dist[grange_cols],
+    full_cpg_island_anno_df_with_dist[cpg_island_grange_cols],
     illumina_probes_curated_chrom_defined_no_names_no_dup_intervals,
 )
 
@@ -1053,10 +1033,8 @@ full_cpg_island_anno_df_with_dist["cpg_island_distance"].plot.hist(
     bins=np.linspace(-1e5, 1e5, 100)
 )
 
-
 # %% [markdown]
 # ## Add probe cytosine motif and strand
-
 
 # %% [markdown]
 # ### Download ref genomes
@@ -1071,7 +1049,6 @@ if recompute:
         f"zcat {mm10_fa} | bgzip > {mm10_fa_bgz}", shell=True, check=True
     )
     subprocess.run(["samtools", "faidx", mm10_fa_bgz], check=True)
-
 
 # %% [markdown]
 # NCBI GRCm38
@@ -1090,7 +1067,6 @@ if recompute:
     )
     subprocess.run(["samtools", "faidx", ncbi_mm10_fa_bgz], check=True, capture_output=True)
 
-
 # %% [markdown]
 # ### download seq id mapper
 
@@ -1107,6 +1083,7 @@ if recompute:
         capture_output=True,
     )
 
+# %%
 chrom_aliases = pd.read_csv(  # type_ignore
     chrom_alias_txt_gz,
     sep="\t",
@@ -1118,9 +1095,12 @@ ucsc_to_refseq_chrom_name = chrom_aliases.query('db == "refseq"').set_index(
     "ucsc_id"
 )["other_db_id"]
 
-
 # %% [markdown]
 # ### Get strands and motifs
+
+# %% [markdown]
+# - a small number of probes does not cover cytosines
+# - comparing against two separately downloaded ref genomes just to be overly cautious about getting this right
 
 # %%
 ucsc_strand_ser, ucsc_motifs_ser = find_cytosine_strand_and_motif(
@@ -1132,7 +1112,6 @@ ucsc_strand_ser, ucsc_motifs_ser = find_cytosine_strand_and_motif(
 )
 
 # %%
-
 df = illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.assign(
     Chromosome=lambda df: df["Chromosome"]
     .astype(str)
@@ -1146,7 +1125,6 @@ ncbi_strand_ser, ncbi_motifs_ser = find_cytosine_strand_and_motif(
     temp_dir_name=temp_dir_name,
     fa_bgz=ncbi_mm10_fa_bgz,
 )
-
 
 # %%
 pd.testing.assert_series_equal(ncbi_strand_ser, ucsc_strand_ser)
@@ -1166,7 +1144,6 @@ motifs_df_final = (
 
 # %%
 motifs_df_final["motif"].value_counts(dropna=False)
-
 
 # %% [markdown]
 # ## Merge all annotations
@@ -1258,3 +1235,5 @@ final_anno_table.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
     probe_annos_one_row_bed_csv, sep="\t", header=True, index=False
 )
 final_anno_table.to_parquet(probe_annos_one_row_bed_parquet)
+
+# %%

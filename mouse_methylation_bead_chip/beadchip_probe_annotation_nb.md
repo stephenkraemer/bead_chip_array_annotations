@@ -91,11 +91,6 @@ import pyranges as pr
 from IPython.display import display
 ```
 
-```{code-cell}
-%matplotlib interactive
-mpl.rcParams['figure.facecolor'] = 'white'
-```
-
 ## Rerun flags
 
 ```{code-cell}
@@ -105,7 +100,6 @@ recompute = True
 ## Paths and URLs
 
 ```{code-cell}
-
 # ### Input data urls and filepaths
 ```
 
@@ -514,12 +508,12 @@ illumina_probes_curated_chrom_defined = (
 
 assert that we have only lost the chromosome 0|na probes
 
+```{code-cell}
 n_probes_chr_defined = (
     illumina_probes.shape[0] - illumina_probes.CHR.isin(["0", np.nan]).sum()
 )
 assert n_probes_chr_defined == illumina_probes_curated_chrom_defined.shape[0]
-
-+++
+```
 
 There are duplicated intervals, ie same interval, different probes, with different names
 
@@ -564,7 +558,6 @@ illumina_probes_curated_chrom_defined_no_names_no_dup_intervals = (
 ### Prepare gene annotation
 
 +++ {"tags": [], "heading_collapsed": "true"}
-
 
 #### download gencode
 
@@ -651,10 +644,6 @@ gencode_pr.df.Chromosome.unique()
 gencode_pr.to_gtf(gencode_coding_canonical_gtf)
 ```
 
-```{code-cell}
-!zcat {gencode_coding_canonical_gtf} | head
-```
-
 verify gtf
 
 ```{code-cell}
@@ -718,7 +707,6 @@ display(df.head(20))
 display(df.tail(20))
 ```
 
-TODO: exchange with appropriate ensembl version
 Nsdhl
 http://nov2020.archive.ensembl.org/Mus_musculus/Gene/Summary?db=core;g=ENSMUSG00000031349;r=X:71962163-72002120
 
@@ -919,7 +907,7 @@ cpg_island_anno_df_unique = (
         )
     )
     .sort_values(["Chromosome", "Start", "End", "region_name"], ascending=True)
-    .groupby(grange_cols, observed=True, as_index=False)
+    .groupby(cpg_island_grange_cols, observed=True, as_index=False)
     .first()
     .assign(
         Chromosome=lambda df: df["Chromosome"].astype(
@@ -939,7 +927,7 @@ the grange join operation has discarded open sea cpgs, merge to get them back
 full_cpg_island_anno_df = pd.merge(
     illumina_probes_curated_chrom_defined_no_names_no_dup_intervals,
     cpg_island_anno_df_unique,
-    on=grange_cols,
+    on=cpg_island_grange_cols,
     how="left",
 )
 ```
@@ -999,10 +987,10 @@ nearest_cpg_island_df = nearest_cpg_island_df.rename(
 full_cpg_island_anno_df_with_dist = pd.merge(
     full_cpg_island_anno_df,
     nearest_cpg_island_df[
-        grange_cols
+        cpg_island_grange_cols
         + ["distance_signed", "next_cpg_island_start", "next_cpg_island_end"]
     ],
-    on=grange_cols,
+    on=cpg_island_grange_cols,
     how="left",
 )
 # fix lost chrom dtype (pandas problem)
@@ -1090,7 +1078,7 @@ pd.crosstab(
 
 ```{code-cell}
 pd.testing.assert_frame_equal(
-    full_cpg_island_anno_df_with_dist[grange_cols],
+    full_cpg_island_anno_df_with_dist[cpg_island_grange_cols],
     illumina_probes_curated_chrom_defined_no_names_no_dup_intervals,
 )
 ```
@@ -1151,7 +1139,9 @@ if recompute:
         check=True,
         capture_output=True,
     )
+```
 
+```{code-cell}
 chrom_aliases = pd.read_csv(  # type_ignore
     chrom_alias_txt_gz,
     sep="\t",
@@ -1166,6 +1156,11 @@ ucsc_to_refseq_chrom_name = chrom_aliases.query('db == "refseq"').set_index(
 
 ### Get strands and motifs
 
++++
+
+- a small number of probes does not cover cytosines
+- comparing against two separately downloaded ref genomes just to be overly cautious about getting this right
+
 ```{code-cell}
 ucsc_strand_ser, ucsc_motifs_ser = find_cytosine_strand_and_motif(
     temp_dir_name=temp_dir_name,
@@ -1177,7 +1172,6 @@ ucsc_strand_ser, ucsc_motifs_ser = find_cytosine_strand_and_motif(
 ```
 
 ```{code-cell}
-
 df = illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.assign(
     Chromosome=lambda df: df["Chromosome"]
     .astype(str)
@@ -1311,4 +1305,8 @@ final_anno_table.rename(columns={"Chromosome": "#Chromosome"}).to_csv(
     probe_annos_one_row_bed_csv, sep="\t", header=True, index=False
 )
 final_anno_table.to_parquet(probe_annos_one_row_bed_parquet)
+```
+
+```{code-cell}
+
 ```
