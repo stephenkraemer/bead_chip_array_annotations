@@ -1213,7 +1213,7 @@ ncbi_motifs_ser.loc[ncbi_strand_ser.eq("-")].value_counts()
 motifs_df_final = (
     illumina_probes_curated_chrom_defined_no_names_no_dup_intervals.reset_index(
         drop=True
-    ).assign(strand=ncbi_motifs_ser, motif=ncbi_motifs_ser)
+    ).assign(strand=ncbi_strand_ser, motif=ncbi_motifs_ser)
 )
 ```
 
